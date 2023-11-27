@@ -16,6 +16,7 @@ class SpeechAppViewModel: ViewModel() {
     var initialEntryBreaker: Boolean = true;
     var outputString = ""
 
+    //serves as a centralized handler for various actions triggered within the app
     fun onAction(action: SpeechAppActions){
         when(action){
             is SpeechAppActions.StartRecording -> startRecordAndConversion()
