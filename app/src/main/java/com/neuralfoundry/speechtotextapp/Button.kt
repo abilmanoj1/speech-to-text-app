@@ -19,16 +19,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.neuralfoundry.speechtotextapp.ui.theme.DarkYellow
 import com.neuralfoundry.speechtotextapp.ui.theme.LightGray
+import org.vosk.android.RecognitionListener
 
 @Composable
-fun CustomButton(state: SpeechAppState, onClick: () -> Unit) {
+fun CustomButton( state: SpeechAppState, onClick: () -> Unit) {
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 550.dp)
-            .clickable {
-                Log.d("CustomButton", "Button clicked")
-                onClick() }
+//            .clickable {onClick()}
     ) {
         Button(
             onClick = onClick,

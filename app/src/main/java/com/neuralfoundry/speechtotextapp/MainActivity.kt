@@ -4,10 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
-import org.vosk.android.RecognitionListener
-import org.vosk.Recognizer
-import org.vosk.Model
-import org.vosk.android.SpeechStreamService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -15,24 +11,22 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.neuralfoundry.speechtotextapp.ui.theme.LightGray
-import org.vosk.android.SpeechService
-
-import org.vosk.LogLevel
-import com.neuralfoundry.speechtotextapp.ui.theme.SpeechToTextAppTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
-import org.vosk.LibVosk
+import com.neuralfoundry.speechtotextapp.ui.theme.LightGray
+import com.neuralfoundry.speechtotextapp.ui.theme.SpeechToTextAppTheme
+import org.vosk.Model
+import org.vosk.Recognizer
+import org.vosk.android.RecognitionListener
+import org.vosk.android.SpeechService
+import org.vosk.android.SpeechStreamService
+import org.vosk.android.StorageService
 import java.io.IOException
-import java.lang.Exception
-import java.util.logging.LogManager
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), RecognitionListener {
 
     private val STATE_START = 0
     private val STATE_READY = 1
@@ -43,36 +37,58 @@ class MainActivity : ComponentActivity() {
     private val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
     private var model: Model? = null
-    private var speechService: Recognizer? = null
+    private var speechService: SpeechService? = null
     private var speechStreamService: SpeechStreamService? = null
 
     private val speechAppViewModel: SpeechAppViewModel by viewModels()
 
-        private val recognitionListenerImplementation = object : RecognitionListener {
-        override fun onPartialResult(hypothesis: String?) {
-            TODO("Not yet implemented")
+    fun initModel(){
+        try {
+            Log.d("Model Access", model?.equals(null).toString())
+            StorageService.unpack(this, "model-en-us", "model",
+                { model ->
+                    runOnUiThread {
+                        this.model = model
+                        // Perform further actions after obtaining the model
+                        // For example, setUiState(STATE_READY)
+                        Log.d("Model Access", "Model 'model-en-us' is accessible.")
+                        Log.d("Model Access", model?.equals(null).toString())
+                    }
+                },
+                { exception ->
+                    runOnUiThread {
+                        Log.e("Model Access", "Failed to unpack the model: ${exception.message}")
+                        // Perform actions in response to the failure to unpack the model
+                        // For example, setErrorState("Failed to unpack the model ${exception.message}")
+                    }
+                }
+            )
+        } catch (e: Exception) {
+            Log.e("Model Access", "Error accessing model: ${e.message}")
         }
-
-        override fun onResult(hypothesis: String?) {
-            TODO("Not yet implemented")
-        }
-
-        override fun onFinalResult(hypothesis: String?) {
-            TODO("Not yet implemented")
-        }
-
-        override fun onError(exception: Exception?) {
-            TODO("Not yet implemented")
-        }
-
-        override fun onTimeout() {
-            TODO("Not yet implemented")
-        }
-
     }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("THE INITIAL","The program starts")
+        val permissionCheck = ContextCompat.checkSelfPermission(
+            applicationContext,
+            Manifest.permission.RECORD_AUDIO
+        )
+        Log.d("THE INITIAL",permissionCheck.toString())
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                PERMISSIONS_REQUEST_RECORD_AUDIO
+            )
+        }
+        else {
+            Log.d("THE INITIAL","Called init model")
+            initModel()
+        }
+
         setContent {
             SpeechToTextAppTheme {
                 // A surface container using the 'background' color from the theme
@@ -89,14 +105,18 @@ class MainActivity : ComponentActivity() {
                             .background(LightGray)
                             .fillMaxSize()
                         ){
-                            VoiceToText(interfaceImplementation = recognitionListenerImplementation,
-                                state = state)
+                            VoiceToText()
 //                    VoiceToText()
                         }
                         OutputTextArea(state = state)
-                        CustomButton(state = state){
-                            speechAppViewModel.onAction(SpeechAppActions.toggleRecording)
-                        }
+                        CustomButton(state = state, onClick = {
+                            viewModel.onAction(SpeechAppActions.ToggleRecording)
+                            this@MainActivity.recognizeMicrophone()
+                        })
+//                        , onClick = { speechAppViewModel.onAction(SpeechAppActions.toggleRecording) }
+//                        {
+//
+//                        }
                     }
 
                 }
@@ -104,21 +124,67 @@ class MainActivity : ComponentActivity() {
         }
 
 //        LibVosk.setLogLevel(LogLevel.INFO)
-        val permissionCheck = ContextCompat.checkSelfPermission(
-            applicationContext,
-            Manifest.permission.RECORD_AUDIO
-        )
-        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                PERMISSIONS_REQUEST_RECORD_AUDIO
-            )
-        } else {
-//            initModel()
+
+
+    }
+
+    var outputText: String = ""
+    override fun onPartialResult(hypothesis: String?) {
+        if (hypothesis != null) {
+            Log.d("THE OUTPUT",hypothesis)
         }
+        outputText += hypothesis
+        speechAppViewModel.onAction(SpeechAppActions.UpdateRecognisedString(hypothesis.toString()))
 
+    }
 
+    override fun onResult(hypothesis: String?) {
+        outputText += hypothesis
+        speechAppViewModel.onAction(SpeechAppActions.UpdateRecognisedString(hypothesis.toString()))
+        if (hypothesis != null) {
+            Log.d("THE OUTPUT",hypothesis)
+        }
+    }
+
+    override fun onFinalResult(hypothesis: String?) {
+        outputText += hypothesis
+        speechAppViewModel.onAction(SpeechAppActions.UpdateRecognisedString(hypothesis))
+        if (speechStreamService != null) {
+            speechStreamService = null
+        }
+        if (hypothesis != null) {
+            Log.d("THE OUTPUT",hypothesis)
+        }
+    }
+
+    override fun onError(exception: Exception?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onTimeout() {
+        Log.d("TIMEOUT","The socket timed out!")
+    }
+
+    fun recognizeMicrophone() {
+        Log.d("RECOGNISER DEBUG","The program starts")
+        if (speechService != null) {
+            Log.d("RECOGNISER DEBUG","The program entered catch if")
+            speechService?.stop()
+            speechService = null
+        } else {
+            Log.d("RECOGNISER DEBUG","The program entered catch else")
+            try {
+                Log.d("RECOGNISER DEBUG","The program entered catch else try start")
+                val rec = Recognizer(model, 16000.0f)
+                speechService = SpeechService(rec, 16000.0f)
+                speechService?.startListening(this)
+                Log.d("RECOGNISER DEBUG","The program entered catch else try end")
+            } catch (e: IOException) {
+//                setErrorState(e.message)
+                Log.d("RECOGNISER DEBUG","The program entered catch")
+            }
+        }
+        Log.d("RECOGNISER DEBUG","The program ends")
     }
 
 
