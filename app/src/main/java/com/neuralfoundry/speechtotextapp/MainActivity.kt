@@ -28,40 +28,36 @@ import java.io.IOException
 
 class MainActivity : ComponentActivity(), RecognitionListener {
 
-    private val STATE_START = 0
-    private val STATE_READY = 1
-    private val STATE_DONE = 2
-    private val STATE_FILE = 3
-    private val STATE_MIC = 4
 
     private val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
-    private var model: Model? = null
-    private var speechService: SpeechService? = null
-    private var speechStreamService: SpeechStreamService? = null
+    private var model: Model? = null        //from pre-trained model
+    private var speechService: SpeechService? = null        //from vosk android
+    private var speechStreamService: SpeechStreamService? = null    //from vosk android
 
     private val speechAppViewModel: SpeechAppViewModel by viewModels()
 
     fun initModel(){
+        //function for initialising the required model for speech -> text
         try {
             Log.d("Model Access", model?.equals(null).toString())
+
+            //unpack model named model-en-us
+            //unpacking happends asynchronously
             StorageService.unpack(this, "model-en-us", "model",
                 { model ->
-                    runOnUiThread {
                         this.model = model
                         // Perform further actions after obtaining the model
                         // For example, setUiState(STATE_READY)
                         Log.d("Model Access", "Model 'model-en-us' is accessible.")
                         Log.d("Model Access", model?.equals(null).toString())
-                    }
-                },
+                }/*onSuccess callback*/,
                 { exception ->
-                    runOnUiThread {
+
                         Log.e("Model Access", "Failed to unpack the model: ${exception.message}")
                         // Perform actions in response to the failure to unpack the model
                         // For example, setErrorState("Failed to unpack the model ${exception.message}")
-                    }
-                }
+                }/*onFailure callback*/
             )
         } catch (e: Exception) {
             Log.e("Model Access", "Error accessing model: ${e.message}")
@@ -74,19 +70,19 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         Log.d("THE INITIAL","The program starts")
         val permissionCheck = ContextCompat.checkSelfPermission(
             applicationContext,
-            Manifest.permission.RECORD_AUDIO
-        )
+            Manifest.permission.RECORD_AUDIO        //checking if the app has permission to access the device's microphone
+        )                                           //check if the permission is granted
         Log.d("THE INITIAL",permissionCheck.toString())
-        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {     //if no access -> get access
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.RECORD_AUDIO),
                 PERMISSIONS_REQUEST_RECORD_AUDIO
-            )
+            )           //requests permission from the user, if no access is granted
         }
         else {
             Log.d("THE INITIAL","Called init model")
-            initModel()
+            initModel()     //call the initModel function if the user has given microphone access rights
         }
 
         setContent {
@@ -128,18 +124,18 @@ class MainActivity : ComponentActivity(), RecognitionListener {
 
     }
 
-    var outputText: String = ""
+//    var outputText: String = ""
     override fun onPartialResult(hypothesis: String?) {
         if (hypothesis != null) {
             Log.d("THE OUTPUT",hypothesis)
         }
-        outputText += hypothesis
+//        outputText += hypothesis
         speechAppViewModel.onAction(SpeechAppActions.UpdateRecognisedString(hypothesis.toString()))
 
     }
 
     override fun onResult(hypothesis: String?) {
-        outputText += hypothesis
+//        outputText += hypothesis
         speechAppViewModel.onAction(SpeechAppActions.UpdateRecognisedString(hypothesis.toString()))
         if (hypothesis != null) {
             Log.d("THE OUTPUT",hypothesis)
@@ -147,7 +143,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     }
 
     override fun onFinalResult(hypothesis: String?) {
-        outputText += hypothesis
+//        outputText += hypothesis
         speechAppViewModel.onAction(SpeechAppActions.UpdateRecognisedString(hypothesis))
         if (speechStreamService != null) {
             speechStreamService = null
