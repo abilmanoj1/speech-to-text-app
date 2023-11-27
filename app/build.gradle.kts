@@ -61,6 +61,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("com.alphacephei:vosk-android:0.3.47@aar")
+    implementation("net.java.dev.jna:jna:5.13.0@aar")
+    implementation("androidx.appcompat:appcompat:1.3.1")
+    implementation("com.google.code.gson:gson:2.8.8")
     implementation(project(mapOf("path" to ":models")))
 
 

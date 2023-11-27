@@ -18,7 +18,7 @@ import org.vosk.android.RecognitionListener
 
 
 @Composable
-fun VoiceToText(interfaceImplementation: RecognitionListener, state: SpeechAppState) {
+fun VoiceToText() {
     Row(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.padding(10.dp)){
             Text(

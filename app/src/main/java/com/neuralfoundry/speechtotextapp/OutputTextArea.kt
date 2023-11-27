@@ -29,7 +29,7 @@ fun OutputTextArea(state: SpeechAppState)
             shape = RoundedCornerShape(8.dp), // Border radius
         )){
             Text(
-                text = if (state.recognisedString.isEmpty()) {
+                text = if (state.recognisedString.isNullOrBlank()) {
                     "The text from the speech model comes here....."
                 } else {
                     state.recognisedString
